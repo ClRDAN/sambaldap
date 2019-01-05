@@ -1,0 +1,198 @@
+
+dn: dc=edt,dc=org
+objectClass: dcObject
+objectClass: organization
+dc: edt
+o: edt
+
+dn: ou=usuaris,dc=edt,dc=org
+objectClass: organizationalUnit
+ou: usuaris
+
+dn: ou=grups,dc=edt,dc=org
+objectClass: organizationalUnit
+ou: grups
+
+dn: ou=hosts,dc=edt,dc=org
+objectClass: organizationalUnit
+ou: hosts
+
+dn: ou=domains,dc=edt,dc=org
+objectClass: organizationalUnit
+ou: domains
+
+dn: sambaDomainName=SAMBA,dc=edt,dc=org
+objectClass: sambaDomain
+sambaDomainName: SAMBA
+sambaSID: S-1-5-21-955855521-2459260878-1327528046
+sambaNextRid: 1000
+
+dn: sambaDomainName=sambaDomain,dc=edt,dc=org
+objectClass: sambaDomain
+objectClass: sambaUnixIdPool
+sambaDomainName: sambaDomain
+sambaSID: S-1-5-21-955855521-2459260878-1327528046
+uidNumber: 1000
+gidNumber: 1000
+
+dn: uid=root,ou=usuaris,dc=edt,dc=org
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: sambaSAMAccount
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: root
+cn: root
+sn: root
+gidNumber: 0
+uidNumber: 0
+homeDirectory: /home/root
+sambaPwdLastSet: 0
+sambaLogonTime: 0
+sambaLogoffTime: 2147483647
+sambaKickoffTime: 2147483647
+sambaPwdCanChange: 0
+sambaPwdMustChange: 2147483647
+sambaHomePath: \\PDC-SRV\root
+sambaHomeDrive: H:
+sambaProfilePath: \\PDC-SRV\profiles\root
+sambaPrimaryGroupSID: S-1-5-21-955855521-2459260878-1327528046-512
+sambaLMPassword: XXX
+sambaNTPassword: XXX
+sambaAcctFlags: [U          ]
+sambaSID: S-1-5-21-955855521-2459260878-1327528046-500
+loginShell: /bin/false
+gecos: Netbios Domain Administrator
+
+dn: uid=nobody,ou=usuaris,dc=edt,dc=org
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: sambaSAMAccount
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: nobody
+sn: nobody
+gidNumber: 514
+uid: nobody
+uidNumber: 999
+homeDirectory: /nonexistent
+sambaPwdLastSet: 0
+sambaLogonTime: 0
+sambaLogoffTime: 2147483647
+sambaKickoffTime: 2147483647
+sambaPwdCanChange: 0
+sambaPwdMustChange: 2147483647
+sambaHomePath: \\PDC-SRV\nobody
+sambaHomeDrive: H:
+sambaProfilePath: \\PDC-SRV\profiles\nobody
+sambaPrimaryGroupSID: S-1-5-21-955855521-2459260878-1327528046-514
+sambaLMPassword: NO PASSWORDXXXXXXXXXXXXXXXXXXXXX
+sambaNTPassword: NO PASSWORDXXXXXXXXXXXXXXXXXXXXX
+sambaAcctFlags: [NUD        ]
+sambaSID: S-1-5-21-955855521-2459260878-1327528046-501
+loginShell: /bin/false
+
+dn: cn=Domain Admins,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Domain Admins
+gidNumber: 512
+memberUid: root
+description: Netbios Domain Administrators
+sambaSID: S-1-5-21-955855521-2459260878-1327528046-512
+sambaGroupType: 2
+displayName: Domain Admins
+
+dn: cn=Domain Users,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Domain Users
+gidNumber: 513
+description: Netbios Domain Users
+sambaSID: S-1-5-21-955855521-2459260878-1327528046-513
+sambaGroupType: 2
+displayName: Domain Users
+
+dn: cn=Domain Guests,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Domain Guests
+gidNumber: 514
+description: Netbios Domain Guests Users
+sambaSID: S-1-5-21-955855521-2459260878-1327528046-514
+sambaGroupType: 2
+displayName: Domain Guests
+
+dn: cn=Domain Computers,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Domain Computers
+gidNumber: 515
+description: Netbios Domain Computers accounts
+sambaSID: S-1-5-21-955855521-2459260878-1327528046-515
+sambaGroupType: 2
+displayName: Domain Computers
+
+dn: cn=Administrators,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Administrators
+gidNumber: 544
+description: Netbios Domain Members can fully administer the computer/sambaDom
+ ainName
+sambaSID: S-1-5-32-544
+sambaGroupType: 4
+displayName: Administrators
+
+dn: cn=Account Operators,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Account Operators
+gidNumber: 548
+description: Netbios Domain Users to manipulate users accounts
+sambaSID: S-1-5-32-548
+sambaGroupType: 4
+displayName: Account Operators
+
+dn: cn=Print Operators,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Print Operators
+gidNumber: 550
+description: Netbios Domain Print Operators
+sambaSID: S-1-5-32-550
+sambaGroupType: 4
+displayName: Print Operators
+
+dn: cn=Backup Operators,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Backup Operators
+gidNumber: 551
+description: Netbios Domain Members can bypass file security to back up files
+sambaSID: S-1-5-32-551
+sambaGroupType: 4
+displayName: Backup Operators
+
+dn: cn=Replicators,ou=grups,dc=edt,dc=org
+objectClass: top
+objectClass: posixGroup
+objectClass: sambaGroupMapping
+cn: Replicators
+gidNumber: 552
+description: Netbios Domain Supports file replication in a sambaDomainName
+sambaSID: S-1-5-32-552
+sambaGroupType: 4
+displayName: Replicators

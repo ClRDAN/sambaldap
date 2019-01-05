@@ -1,0 +1,10 @@
+servidor ldap ==> ldapserver:18samba
+a corregir
+- ldap.conf: URI ldap://ldap
+
+servidor ldap ok
+
+servidor samba ==> samba:18ldapsam
+
+
+
