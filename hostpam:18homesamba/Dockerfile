@@ -1,7 +1,7 @@
 # Version: 0.0.1
-# @edt M06 2018-2019
-# host PAM
-# ----------------------
+# Aitor Galilea@edt M06 2018-2019
+# cliente SAMBA capaz de automontar directorios mediante PAM
+# -----------------------------------------------------------
 FROM fedora:27
 LABEL author="Aitor Galilea@edt ASIX M06-ASO"
 LABEL description="host PAM 2018-2019"
