@@ -16,9 +16,7 @@ echo "local02" | passwd --stdin local02
 echo "local03" | passwd --stdin local03
 echo "local04" | passwd --stdin local04
 
-#bash /opt/docker/auth.sh
-cp /opt/docker/nslcd.conf /etc/nslcd.conf
-cp /opt/docker/ldap.conf /etc/openldap/ldap.conf
+./authconfig.conf
 cp /opt/docker/nsswitch.conf /etc/nsswitch.conf
 
 # - ARRANCAMOS SERVICIOS
