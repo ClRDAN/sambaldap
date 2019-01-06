@@ -23,8 +23,10 @@ cp /opt/docker/nsswitch.conf /etc/nsswitch.conf
 
 # - ARRANCAMOS SERVICIOS
 #------------------------
-/usr/sbin/nslcd && echo "nslcd Ok"
-/usr/sbin/nscd && echo "nscd Ok"
+/usr/sbin/nslcd && echo "nslcd OK"
+/usr/sbin/nscd && echo "nscd OK"
+/usr/sbin/smbd && echo "smb OK"
+/usr/sbin/nmbd && echo "nmb OK"
 
 # - CREAMOS DIRECTORIOS COMPARTIDOS 
 # ----------------------------------
