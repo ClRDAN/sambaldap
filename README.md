@@ -1,87 +1,54 @@
-# SAMBA ldapsam
+# SAMBA con LDAP como backend
 
 ## @edt ASIX M06 2018-2019
 
-Podeu trobar les imatges docker al Dockehub de [edtasixm06](https://hub.docker.com/u/edtasixm06/)
-
-Podeu trobar la documentació del mòdul a [ASIX-M06](https://sites.google.com/site/asixm06edt/)
-
-
-ASIX M06-ASO Escola del treball de barcelona
-
-### Imatges:
-
-* **edtasixm06/samba:18ldapsam** Servidor SAMBA amb backend LDAP *ldapsam*. Requereix de l'ús de un 
-servidor ldap preparat amb l'schema samba. Les dades dels usuaris samba es desen en els comptes
- d'usuari ldap.
+En este repositorio se encuentran los archivos necesarios para montar un sistema de servidores LDAP y SAMBA (con LDAP 
+haciendo de backend de SAMBA). Por lo tanto el sistema a montar consta de dos
+contenedores docker: 
+* Servidor LDAP. Utilizamos el mismo que para prácticas anteriores. Sus archivos de configuración están dentro del
+directorio ldapserver, en el repositorio https://github.com/ClRDAN/sambaldap  
+La imágen del docker está en https://hub.docker.com/r/agalilea/ldapsmb y se puede descargar con  
+``` docker pull agalilea/ldapsmb```  
+* Servidor SAMBA. Sus archivos de configuración están dentro del directorio smbserver, en el repositorio 
+https://github.com/ClRDAN/sambaldap  
+La imágen del docker está en https://hub.docker.com/r/agalilea/samba y se puede descargar con  
+```docker pull agalilea/samba```  
+El contenido de cada directorio está detallado en los archivos README incluidos en los mismos directorios. 
 
 ### Arquitectura
+Para que SAMBA utilice LDAP como backend y los directorios HOME se automonten mediante SAMBA al loguear necesitamos:
+* **Red local** en la que situar los equipos denominada **sambanet**. Se crea usando el comando  
+```docker network create sambanet ```  
+* **Servidor LDAP**. container denominado **ldap** generado a partir de la imagen ldapsmb. Se arranca mediante el comando  
+```docker run --rm --name ldap --hostname ldap --network sambanet -d agalilea/ldapsmb ```  
+* **Servidor SAMBA**. container denominado **samba** generado a partir de la imagen samba. Se arranca mediante el comando  
+```docker run --rm --name samba --hostname samba --network sambanet -d agalilea/samba ```  
 
-Per implementar un host amb usuaris unix i ldap on els homes dels usuaris es muntin via samba de un 
-servidor de disc extern cal:
+### Configuración
+En el servidor LDAP tan sólo hay que añadir un schema específico para SAMBA en /etc/openldap/schema, que es el que nos 
+permitirá almacenar los datos de SAMBA en la base de datos LDAP.  
+En el servidor SAMBA hay que:
+* Instalar los paquetes samba y samba-client para SAMBA, y smbldap-tools para configurar LDAP para que utilice LDAP 
+como backend.
+* Configurar la conexión con LDAP usando las herramientas authconfig y nsswitch
+* Arrancar los servicios para LDAP (nscd y nslcd) y para SAMBA (smbd y nmbd)
+* Configurar los shares (creamos directorios y archivos compartidos, modificamos /etc/samba/smb.conf, establecemos las 
+configuraciones para compartirlos) y la integración SAMBA-LDAP
+  * En /etc/samba/smb.conf definimos el backend LDAP incluyendo  
+  ```passdb backend = ldapsam:ldap://172.19.0.3``` 
+  y una serie de líneas con los sufijos que se usarán en LDAP para 
+  guardar los nuevos usuarios, grupos, hosts y otras configuraciones necesarias.
+  * En /etc/smbldap-tools/smbldap.conf especificamos dónde se encuentra el servidor LDAP master y slave (en nuestro 
+  caso ambos son el mismo), establecemos el sufijo LDAP como 'dc=edt,dc=org' y los sufijos de los distintos tipos de 
+  elemento ('ou=usuaris,dc=edt,dc=org' 'ou=grups,dc=edt,dc=org'...)  
+* Guardar la contraseña del administrador (root) de SAMBA y LDAP con la herramienta smbpasswd (secret), de modo que 
+SAMBA pueda usarla
+* Crear en LDAP las estructuras de datos necesarias para almacenar la información de SAMBA mediante la utilidad 
+smbldap-populate. Esta herramienta también pide que introduzcamos la clave del usuario root del dominio (edt.org, 
+almacenado en LDAP-> secret)
 
-  * **sambanet** Una xarxa propia per als containers implicats.
+* Crear los usuarios locales y de SAMBA mediante la herramienta smbpasswd
 
-  * **edtasixm06/ldapserver:18samba** Un servidor ldap en funcionament amb els usuaris de xarxa.
-
-  * **edtasixm06/samba:18ldapsam** Un servidor samba que utilitza *ldapsam* com a backend.
-Exporta els homes dels usuaris com a shares via *[homes]*. Aquest servidor està configurat per tenir
-usuaris locals i usuaris LDAP. Està configurat correctament l'accés al servidor LDAP.
-Contindrà:
-
-    * *Usuaris unix* Samba requereix la existència de usuaris unix. Per tant caldrà disposar dels usuaris unix,
-poden ser locals o de xarxa via LDAP. Així doncs, el servidor samba ha d'estar configurat amb nscd i nslcd per
-poder accedir al ldap. Amb getent s'han de poder llistar tots els usuaris i grups de xarxa.
-
-    * *homes* Cal que els usuaris tinguin un directori home. Els usuaris unix local ja en tenen en crear-se
-l'usuari, però els usuaris LDAP no. Per tant cal crear el directori home dels usuaris ldap i assignar-li la 
-propietat i el grup de l'usuari apropiat.
-
-    * *Usuaris samba* Cal crear els comptes d'usuari samba (recolsats en l'existència del mateix usuari unix/ldap).
-Per a cada usuari samba els pot crear amb *smbpasswd* el compte d'usuasi samba assignant-li el password de samba. 
-Aquest es desarà en la base de dades ldap. 
-Convé que sigui el mateix que el de ldap per tal de que en fer login amb un sol password es validi l'usuari (auth de
-pam_ldap.so) i es munti el  home via samba (pam_mount.so).
-Samba pot desar els seus usuaris en una base de dades local anomenada **tdbsam** o els pot desar en un servidor ldap 
-usant com a backend **ldapsam**. 
-
-  * **hostpam** Un hostpam configurat per accedir als usuarislocals i ldap i que usant pam_mount.so
-munta dins del home dels usuaris un home de xarxa via samba. Cal configurar */etc/security/pam_mount.conf.xml* 
-per muntar el recurs samba dels *[homes]*.
-
-## Configuració SAMBA ldapsam
-
-Per tal de que el servei SAMBA utilitzi com a backend LDAp caldrà fer una sèrie de passos que s'expliquen detalladament 
-en aquest apartat. Un resum dels passos és:
-
- * Assegurar-se que el servidor ldap inclou l'schema samba.
- * Incorporar el paquet smbldap-tools al servidor samba.
- * Configurar correctament el servidor samba establint el backend *ldapsam* i les seves opcions.
- * Configurar els fitxers de smbldap-tools que permeten inicialitzar la base de dades ldap com a backend de samba. Aquests fitxers són:
-   * /etc/smbldap-tools/smbldap.conf Configura les opcions de samba en el ldap.
-   * /etc/smbldap-tools/smbldap_bind.conf Indica com s'ha de fer el bind de samba amb ldap, el rootDN i password per contactar i administrar ldap.
- * Generar el password d'administrador de samba/ldap amb *smbpasswd -x passwd*. Aquest es desa localment al fitxer *secrets.db*.
- * [ test ] podem fer un test de que tot funciona bé amb les ordres *net getlocalsid* i *net getdomainsid*.
- * Fer el populate de samba a la base de dades ldap. És a dir, per desar la informació de SAMBA a ldap 
-cal crear les entitats apropiades per emmagatzemar-ho tot. Això es fa amb la utilitat **smbldap-populate**.
-Sol·licita establir el password amb el que samba contactarà amb ldap.
- * [test] podem verificar que s'ha fet el populate llistant el DIT de ldap amb *ldapsearch -x -LLL*.
- * [test] amb l'ordre *pdbedit -L* podem observar els usuaris root i nobody afegits.
- * Ara ja podem crear els usuaris samba, usuari per usuari amb l'ordre *smbpasswd -a usuari*.
-
-
-#### Execució
-
-```
-docker network create sambanet
-docker run --rm --name ldap -h ldap --net sambanet -d edtasixm06/ldapserver:18samba
-
-docker run --rm --name samba -h samba --net sambanet -it edtasixm06/samba:18ldapsam
-
-docker run --rm --name host -h host --net sambanet -it edtasixm06/hostpam:18homenfs  #canviar per :18homesamba
-```
-
-#### Configuració samba
 
 /etc/samba/smb.conf
 ```
@@ -255,27 +222,7 @@ scope="sub"
 password_hash="SSHA"
 ```
 
-#### Configuració en el hostpam
-
-*/etc/security/pam_mount.conf.xml*
-```
-<volume user="*" fstype="cifs" server="samba" path="%(USER)"  mountpoint="~/%(USER)" />
-
-```
-
-#### Exemple en el hostpam
-```
-[root@host docker]# su - local01
-
-[local01@host ~]$ su - anna
-pam_mount password:
-
-[anna@host ~]$ ll
-total 0
-drwxr-xr-x+ 2 anna alumnes 0 Dec 14 20:27 anna
-
-[anna@host ~]$ mount -t cifs
-//samba2/anna on /tmp/home/anna/anna type cifs (rw,relatime,vers=1.0,cache=strict,username=anna,domain=,uid=5002,forceuid,gid=600,forcegid,addr=172.21.0.2,unix,posixpaths,serverino,mapposix,acl,rsize=1048576,wsize=65536,echo_interval=60,actimeo=1)
-```
-
+### Bibliografía
+https://help.ubuntu.com/lts/serverguide/samba-ldap.html.en
+https://github.com/edtasixm06/samba/blob/master/samba:18ldapsam/README.md
 

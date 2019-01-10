@@ -6,5 +6,5 @@ servidor ldap ok
 
 servidor samba ==> samba:18ldapsam
 
-
+cliente samba ==> hostsambapam:base
 
