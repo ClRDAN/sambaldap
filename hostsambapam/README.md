@@ -1,60 +1,27 @@
-# PAM
-## @edt ASIX M06-ASO Curs 2018-2019
+#HOSTSAMBAPAM
+Archivos necesarios para generar una imagen docker con la que montar containers de 
+Fedora 27 capaces de comunicarse con un container LDAP y SAMBA, permitiendo loguear a usuarios LDAP y locales. A los 
+usuarios de LDAP se les automonta un directorio HOME mediante SAMBA y PAM.
 
-Podeu trobar les imatges docker al Dockehub de [edtasixm06](https://hub.docker.com/u/edtasixm06/)
+La imagen ya creada se encuentra en https://hub.docker.com/r/agalilea/  
+```docker pull agalilea/hostsambapam```  
+La imagen del servidor LDAP se encuentra en https://hub.docker.com/r/agalilea/ldapsmb/  
+```docker pull agalilea/ldapsmb```  
+La imagen del servidor SAMBA se encuentra en https://hub.docker.com/r/agalilea/samba
+```docker pull agalilea/samba```
 
-Podeu trobar la documentació del mòdul a [ASIX-M06](https://sites.google.com/site/asixm06edt/)
-
-ASIX M06-ASO Escola del treball de barcelona
-
-
-* **hostpam:18homesamba** host pam amb authenticació ldap. Munta els homes de l'usuari via samba.
-Per posar en funcionament aquest model calen tres elements: un servidor LDAP, un servidor SAMBA i un host que actua de
-client amb PAM + LDAP + pam_mount.so per carregar els homes dels usuaris via SAMBA. Cal instal·lar *cifs-utils*.
-
-
-Fer que els homes dels usuaris es muntin per samba. Primer caldrà en un servidor samba crear els directoris homes dels usuaris, i assignar-los els permisos apropiats, propietari i grup (recursivament). Podem fer que el servidor samba sigui primerament el nostre host amb l’adreça de docker, i posteriorment fabricar un container servidor samba.
-
-Si volem que els homes de xarxa dels usuaris es muntin individualment, per exemple posant un directori home-xarxa dins del home local, cal instal·lar pam_mount i configurar pam_mount.conf.xml. Aquest usarà miunt.cifs per muntar el recurs de samba i per això cal instal·lar *cifs-utils*.
-És especialment important configurar correctament els permisos amb què es munta el directori de xarxa, el propietari i grup ha de ser el de l’usuari.
-
-
-#### Execució
-
-```
-docker run --rm --name ldap -h ldap --net sambanet -d edtasixm06/ldapserver:18group
-docker run --rm --name host -h host --net sambanet --privileged -it edtasixm06/hostpam:18homesamba
-
-docker run --rm --name samba -h samba --net sambanet --privileged -it edtasixm06/samba:18ldapusers
-o bé
-docker run --rm --name samba -h samba --net sambanet --privileged -it edtasixm06/samba:18ldapsam
-
-```
-
-#### Configuracions
-
-Cal instal-lar al host client el paquet **cifs-utils** per poder disposar del mount.cifs.
-
-pam_mount.conf.xml (només a pere se li genera el  ramdisk):
-```
-<volume user="*" fstype="cifs" server="samba" path="%(USER)"  mountpoint="~/%(USER)" />
-```
-
-
-#### Utilització
-
-```
-[root@host docker]# su - local01
-
-[local01@host ~]$ su - anna
-pam_mount password:
-Creating directory '/tmp/home/anna'.
-
-[anna@host ~]$ ll
-total 0
-drwxr-xr-x+ 2 anna alumnes 0 Dec 15 18:59 anna
-
-[anna@host ~]$ mount -t cifs
-//samba/anna on /tmp/home/anna/anna type cifs (rw,relatime,vers=1.0,cache=strict,username=anna,domain=,uid=5002,forceuid,gid=600,forcegid,addr=172.21.0.3,unix,posixpaths,serverino,mapposix,acl,rsize=1048576,wsize=65536,echo_interval=60,actimeo=1)
-```
+El repositorio contiene los siguientes archivos:
+  * authconfig.conf: script que utiliza el comando authconfig para configurar la conexión con LDAP. Se ejecuta automáticamente al arrancar el container.  
+  * Dockerfile: archivo de creación de la imagen Docker. Este archivo hace que se instalen en el container los paquetes 
+  necesarios para la comunicación con el servidor LDAP (openldap-clients, nss-pam-ldapd, authconfig) y para montar los 
+  shares (pam_mount cifs-utils samba-client. También copia todos los archivos de configuración al container y establece 
+  el script startup.sh como comando predeterminado a ejecutar al arrancar el container.  
+  * install.sh: script que se ejecuta al arrancar la imagen, configura el container y arranca servicios necesarios 
+  (nslcd y nscd para LDAP)  
+  * nsswitch.conf: archivo de configuracion de nsswitch, sobrescribe al predefinido al ejecutar install.sh. Necesario para la comunicación con LDAP.  
+  * pam_mount.conf.xml: archivo de configuración del módulo PAM pam_mount, necesario para montar los HOME compartidos 
+  mediante el servidor SAMBA 
+  * startup.sh: llama al script install.sh y especifica el programa padre al arrancar el container.  
+  * system-auth.edt: archivo de módulos pam para la autenticación de usuarios, se encarga de controlar dicha
+autenticación y de que se cree y/o monte automáticamente el HOME del usuario si no existía. Al arrancar el container este archivo se copia en /etc/pam.d/ y se crea un enlace simbólico llamado /etc/pam.d/system-auth que apunta a él.  
 

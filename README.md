@@ -13,7 +13,6 @@ La imágen del docker está en https://hub.docker.com/r/agalilea/ldapsmb y se pu
 https://github.com/ClRDAN/sambaldap  
 La imágen del docker está en https://hub.docker.com/r/agalilea/samba y se puede descargar con  
 ```docker pull agalilea/samba```  
-El contenido de cada directorio está detallado en los archivos README incluidos en los mismos directorios. 
 
 ### Arquitectura
 Para que SAMBA utilice LDAP como backend y los directorios HOME se automonten mediante SAMBA al loguear necesitamos:
@@ -25,17 +24,19 @@ Para que SAMBA utilice LDAP como backend y los directorios HOME se automonten me
 ```docker run --rm --name samba --hostname samba --network sambanet -d agalilea/samba ```  
 
 ### Configuración
-En el servidor LDAP tan sólo hay que añadir un schema específico para SAMBA en /etc/openldap/schema, que es el que nos 
+En el servidor LDAP tan sólo hay que descargar y añadir un schema específico para SAMBA en /etc/openldap/schema y cargarlo en 
+slapd.conf con la línea de configuración `include /etc/openldap/schema/samba.schema`. Esto es lo que nos 
 permitirá almacenar los datos de SAMBA en la base de datos LDAP.  
 En el servidor SAMBA hay que:
-* Instalar los paquetes samba y samba-client para SAMBA, y smbldap-tools para configurar LDAP para que utilice LDAP 
-como backend.
+* Instalar los paquetes samba y samba-client para que actue como servidor y cliente SAMBA, y smbldap-tools para 
+configurar LDAP para que utilice LDAP como backend.
 * Configurar la conexión con LDAP usando las herramientas authconfig y nsswitch
-* Arrancar los servicios para LDAP (nscd y nslcd) y para SAMBA (smbd y nmbd)
+* Arrancar los servicios para LDAP nscd y nslcd. Se hace en este momento porque si no al asignar permisos a los 
+directorios de los shares podemos tener problemas (por ejemplo al crear un share con el home del usuario LDAP pere) 
 * Configurar los shares (creamos directorios y archivos compartidos, modificamos /etc/samba/smb.conf, establecemos las 
 configuraciones para compartirlos) y la integración SAMBA-LDAP
   * En /etc/samba/smb.conf definimos el backend LDAP incluyendo  
-  ```passdb backend = ldapsam:ldap://172.19.0.3``` 
+  ```passdb backend = ldapsam:ldap://ldap``` 
   y una serie de líneas con los sufijos que se usarán en LDAP para 
   guardar los nuevos usuarios, grupos, hosts y otras configuraciones necesarias.
   * En /etc/smbldap-tools/smbldap.conf especificamos dónde se encuentra el servidor LDAP master y slave (en nuestro 
@@ -44,11 +45,57 @@ configuraciones para compartirlos) y la integración SAMBA-LDAP
 * Guardar la contraseña del administrador (root) de SAMBA y LDAP con la herramienta smbpasswd (secret), de modo que 
 SAMBA pueda usarla
 * Crear en LDAP las estructuras de datos necesarias para almacenar la información de SAMBA mediante la utilidad 
-smbldap-populate. Esta herramienta también pide que introduzcamos la clave del usuario root del dominio (edt.org, 
-almacenado en LDAP-> secret)
-
+smbldap-populate. Esta herramienta también pide que introduzcamos la clave del usuario root del dominio (en nuestro caso 
+edt.org, la clave queda almacenada en LDAP)
 * Crear los usuarios locales y de SAMBA mediante la herramienta smbpasswd
+* Arrancar los servicios para SAMBA (smbd y nmbd). Se hace en último lugar en vez de arrancarlos a la vez que LDAP 
+porque algunas configuraciones de los shares requieren conexión con LDAP, y si el servicio SAMBA estuviera arrancado 
+cuando hacemos esas configuraciones habría que reiniciarlo para que los cambios tengan efecto.  
 
+### Comprobaciones
+Para verificar que el servidor SAMBA tiene acceso a LDAP usamos
+```
+getent passwd
+getent group
+```
+y verificamos que aparecen los usuarios y grupos de LDAP. Con la segunda orden podemos verificar que están presentes 
+los grupos *Account Operators, Print Operators, Backup Operators* y *Replicators*, creados durante el *populate* de la 
+base de datos.  
+Para comprobar que SAMBA está utilizando LDAP como backend, creamos un nuevo usuario con el comando
+```bash
+smbpasswd -a local01
+```
+y comprobamos que el nuevo usuario SAMBA aparece en LDAP con 
+```ldapsearch -x -LLL -b 'uid=local01,ou=usuaris,dc=edt,dc=org'```  
+Para comprobar que SAMBA está publicando los shares, ejecutamos `smbtree` e intentamos conectar a un share con
+```
+smbclient //SAMBA/public
+smbclient -U pere //SAMBA/pere 
+ ```
+### Extra
+se incluye en el repositorio de github un tercer directorio llamado hostsambapam. En él están los archivos necesarios 
+para construir una imagen docker de un cliente samba-ldap-pam capaz de conectarse a los servidores LDAP y SAMBA. Desde 
+este cliente un usuario LDAP puede loguearse al sistema, y al hacerlo se automontará en su HOME un directorio con su 
+HOME de SAMBA (es decir, al loguear el usuario pere, en su home aparecerá un directorio llamado pere que corresponde al 
+share SAMBA//pere, que sólo es accesible para él y que se desmontará al cerrar la sesión).   
+   
+La imágen de docker está en https://hub.docker.com/r/agalilea/hostsambapam y se puede descargar con
+`docker pull agalilea/hostsambapam`
+  
+Para que esto sea posible hemos hecho lo siguiente:
+En el cliente:
+* Partimos de un Docker con el acceso a LDAP configurado y pam_mount instalado.
+* Instalamos el paquete cifs-utils para poder montar los HOMES.
+* Añadimos la siguiente linea en /etc/security/pam_mount.conf.xml  
+```<volume user="*" fstype="cifs" server="samba" path="%(USER)"  mountpoint="~/%(USER)" />```  
+* Modificamos el archivo /etc/pam.d/system-auth-edt para que monte el HOME del usuario cuando su uid sea >= 5000 (es 
+decir, cuando sea usuario LDAP, ya que los locales empiezan en 1000)   
+
+En el servidor SAMBA:
+* creamos los directorios HOME de los usuarios LDAP que van a poder automontar su share y les cambiamos el propietario 
+y grupo que corresponda a cada uno.
+* creamos los shares de los HOMES en /etc/samba/smb.conf bajo el epígrafe [homes]
+* creamos un usuario de SAMBA para cada usuario LDAP 
 
 /etc/samba/smb.conf
 ```
@@ -58,7 +105,7 @@ almacenado en LDAP-> secret)
         log file = /var/log/samba/log.%m
         max log size = 50
         security = user
-        passdb backend = ldapsam:ldap://172.21.0.2
+        passdb backend = ldapsam:ldap://ldap
           ldap suffix = dc=edt,dc=org
           ldap user suffix = ou=usuaris
           ldap group suffix = ou=grups
@@ -75,154 +122,16 @@ almacenado en LDAP-> secret)
         writable = yes
 ;       valid users = %S
 ;       valid users = MYDOMAIN\%S
+[public]
+        comment = Share publico
+        path = /tmp/home/public
+        public = yes
+        browseable = yes
+        writable = yes
+        printable = no
+guest ok = yes
 ```
 
-/etc/smbldap-tools/smbldap_bind.conf
-```
-# $Id$
-#
-############################
-# Credential Configuration #
-############################
-# Notes: you can specify two differents configuration if you use a
-# master ldap for writing access and a slave ldap server for reading access
-# By default, we will use the same DN (so it will work for standard Samba
-# release)
-slaveDN="cn=Manager,dc=edt,dc=org"
-slavePw="secret"
-masterDN="cn=Manager,dc=edt,dc=org"
-masterPw="secret"
-```
-
-/etc/smbldap-tools/smbldap.conf
-```
-# $Id$
-#
-# smbldap-tools.conf : Q & D configuration file for smbldap-tools
-
-#  This code was developped by IDEALX (http://IDEALX.org/) and
-#  contributors (their names can be found in the CONTRIBUTORS file).
-#
-#                 Copyright (C) 2001-2002 IDEALX
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
-#  USA.
-
-#  Purpose :
-#       . be the configuration file for all smbldap-tools scripts
-
-##############################################################################
-#
-# General Configuration
-#
-##############################################################################
-
-# Put your own SID. To obtain this number do: "net getlocalsid".
-# If not defined, parameter is taking from "net getlocalsid" return
-#SID="S-1-5-21-2252255531-4061614174-2474224977"
-
-# Domain name the Samba server is in charged.
-# If not defined, parameter is taking from smb.conf configuration file
-# Ex: sambaDomain="IDEALX-NT"
-#sambaDomain="DOMSMB"
-
-##############################################################################
-#
-# LDAP Configuration
-#
-##############################################################################
-
-# Notes: to use to dual ldap servers backend for Samba, you must patch
-# Samba with the dual-head patch from IDEALX. If not using this patch
-# just use the same server for slaveLDAP and masterLDAP.
-# Those two servers declarations can also be used when you have
-# . one master LDAP server where all writing operations must be done
-# . one slave LDAP server where all reading operations must be done
-#   (typically a replication directory)
-
-# Slave LDAP server URI
-# Ex: slaveLDAP=ldap://slave.ldap.example.com/
-# If not defined, parameter is set to "ldap://127.0.0.1/"
-slaveLDAP="ldap://172.21.0.2/"
-
-# Master LDAP server URI: needed for write operations
-# Ex: masterLDAP=ldap://master.ldap.example.com/
-# If not defined, parameter is set to "ldap://127.0.0.1/"
-masterLDAP="ldap://172.21.0.2/"
-
-# Use TLS for LDAP
-# If set to 1, this option will use start_tls for connection
-# (you must also used the LDAP URI "ldap://...", not "ldaps://...")
-# If not defined, parameter is set to "0"
-ldapTLS="0"
-
-# How to verify the server's certificate (none, optional or require)
-# see "man Net::LDAP" in start_tls section for more details
-verify="require"
-
-# CA certificate
-# see "man Net::LDAP" in start_tls section for more details
-cafile="/etc/pki/tls/certs/ldapserverca.pem"
-
-# certificate to use to connect to the ldap server
-# see "man Net::LDAP" in start_tls section for more details
-clientcert="/etc/pki/tls/certs/ldapclient.pem"
-
-# key certificate to use to connect to the ldap server
-# see "man Net::LDAP" in start_tls section for more details
-clientkey="/etc/pki/tls/certs/ldapclientkey.pem"
-
-# LDAP Suffix
-# Ex: suffix=dc=IDEALX,dc=ORG
-suffix="dc=edt,dc=org"
-
-# Where are stored Users
-# Ex: usersdn="ou=Users,dc=IDEALX,dc=ORG"
-# Warning: if 'suffix' is not set here, you must set the full dn for usersdn
-usersdn="ou=usuaris,${suffix}"
-
-# Where are stored Computers
-# Ex: computersdn="ou=Computers,dc=IDEALX,dc=ORG"
-# Warning: if 'suffix' is not set here, you must set the full dn for computersdn
-computersdn="ou=hosts,${suffix}"
-
-# Where are stored Groups
-# Ex: groupsdn="ou=Groups,dc=IDEALX,dc=ORG"
-# Warning: if 'suffix' is not set here, you must set the full dn for groupsdn
-groupsdn="ou=grups,${suffix}"
-
-# Where are stored Idmap entries (used if samba is a domain member server)
-# Ex: idmapdn="ou=Idmap,dc=IDEALX,dc=ORG"
-# Warning: if 'suffix' is not set here, you must set the full dn for idmapdn
-idmapdn="ou=domains,${suffix}"
-
-# Where to store next uidNumber and gidNumber available for new users and groups
-# If not defined, entries are stored in sambaDomainName object.
-# Ex: sambaUnixIdPooldn="sambaDomainName=${sambaDomain},${suffix}"
-# Ex: sambaUnixIdPooldn="cn=NextFreeUnixId,${suffix}"
-sambaUnixIdPooldn="sambaDomainName=${sambaDomain},${suffix}"
-
-# Default scope Used
-scope="sub"
-
-# Unix password hash scheme (CRYPT, MD5, SMD5, SSHA, SHA, CLEARTEXT)
-# If set to "exop", use LDAPv3 Password Modify (RFC 3062) extended operation.
-password_hash="SSHA"
-```
-
-### Bibliografía
+### Documentación
 https://help.ubuntu.com/lts/serverguide/samba-ldap.html.en
 https://github.com/edtasixm06/samba/blob/master/samba:18ldapsam/README.md
-
