@@ -1,4 +1,4 @@
-#SAMBA
+# SAMBA
 Archivos necesarios para generar una imagen docker con la que montar containers de 
 Fedora 27 con un servidor SAMBA capaces de comunicarse con un container LDAP que haga de backend, permitiendo loguear y 
 acceder a shares a usuarios LDAP y locales. 
