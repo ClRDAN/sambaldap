@@ -133,5 +133,5 @@ guest ok = yes
 ```
 
 ### Documentación
-https://help.ubuntu.com/lts/serverguide/samba-ldap.html.en
+https://help.ubuntu.com/lts/serverguide/samba-ldap.html.en  
 https://github.com/edtasixm06/samba/blob/master/samba:18ldapsam/README.md
