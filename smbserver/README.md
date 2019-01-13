@@ -3,7 +3,7 @@ Archivos necesarios para generar una imagen docker con la que montar containers 
 Fedora 27 con un servidor SAMBA capaces de comunicarse con un container LDAP que haga de backend, permitiendo loguear y 
 acceder a shares a usuarios LDAP y locales. 
 
-La imagen ya creada se encuentra en https://hub.docker.com/r/agalilea/samba
+La imagen ya creada se encuentra en https://hub.docker.com/r/agalilea/samba  
 ```docker pull agalilea/samba```
 La imagen ya creada del host se encuentra en https://hub.docker.com/r/agalilea/  
 ```docker pull agalilea/hostsambapam```  
